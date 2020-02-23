@@ -1,6 +1,16 @@
-from nltk.corpus import stopwords
-from nltk.stem import PorterStemmer
-from nltk.tokenize import word_tokenize, sent_tokenize
+from __future__ import absolute_import
+from __future__ import division, print_function, unicode_literals
+
+from sumy.parsers.html import HtmlParser
+from sumy.parsers.plaintext import PlaintextParser
+from sumy.nlp.tokenizers import Tokenizer
+from sumy.summarizers.lsa import LsaSummarizer as Summarizer
+from sumy.nlp.stemmers import Stemmer
+from sumy.utils import get_stop_words
+
+
+LANGUAGE = "english"
+SENTENCES_COUNT = 5
 
 text_str = '''
 Those Who Are Resilient Stay In The Game Longer
@@ -17,110 +27,17 @@ Vision + desire + dedication + patience + daily action leads to astonishing succ
 So become intentional on what you want out of life. Commit to it. Nurture your dreams. Focus on your development and if you want to give up, know what’s involved before you take the plunge. Because I assure you, someone out there right now is working harder than you, reading more books, sleeping less and sacrificing all they have to realise their dreams and it may contest with yours. Don’t leave your dreams to chance.
 '''
 
-def _create_word_frequency_table(text_string):
-    """
-    we create a dictionary for the word frequency table.
-    For this, we should only use the words that are not part of the stopWords array.
 
-    Removing stop words and making frequency table
-    Stemmer - an algorithm to bring words to its root word.
+if __name__ == "__main__":
+    url = "https://en.wikipedia.org/wiki/Automatic_summarization"
+    # parser = HtmlParser.from_url(url, Tokenizer(LANGUAGE))
+    # or for plain text files
+    # parser = PlaintextParser.from_file("document.txt", Tokenizer(LANGUAGE))
+    parser = PlaintextParser.from_string(text_str, Tokenizer(LANGUAGE))
+    stemmer = Stemmer(LANGUAGE)
 
-    :return: words dict 
-    """
-    stopWords = set(stopwords.words("english"))
-    words = word_tokenize(text_string)
+    summarizer = Summarizer(stemmer)
+    summarizer.stop_words = get_stop_words(LANGUAGE)
 
-    ps = PorterStemmer()
-
-    wordFrequencyTable = dict()
-    for word in words:
-        word = ps.stem(word)
-        if word in stopWords:
-            continue
-        if word in wordFrequencyTable:
-            wordFrequencyTable[word] += 1
-        else:
-            wordFrequencyTable[word] = 1
-
-    return wordFrequencyTable
-
-
-def _score_sentences(sentences, wordFrequencyTable):
-    """
-    score a sentence by its words
-    Basic algorithm: adding the frequency of every non-stop word in a sentence divided by total no of words in a sentence.
-    :rtype: dict
-    """
-
-    sentenceValueTable = dict()
-    for sentence in sentences:
-        word_count_in_sentence = len(word_tokenize(sentence))
-        word_count_in_sentence_without_stop_words = 0
-
-        for wordValue in wordFrequencyTable:
-            if wordValue in sentence.lower():
-                word_count_in_sentence_without_stop_words += 1
-                if sentence[:10] in sentenceValueTable:
-                    sentenceValueTable[sentence[:10]] += wordFrequencyTable[wordValue]
-                else:
-                    sentenceValueTable[sentence[:10]] = wordFrequencyTable[wordValue]
-
-        '''
-        we're dividing every sentence score by the number of words in the sentence. 
-        Because there can be unfair advantage to long sentence over short sentence with our scoring function
-        '''
-        if sentence[:10] in sentenceValueTable:
-            sentenceValueTable[sentence[:10]] = sentenceValueTable[sentence[:10]] / word_count_in_sentence_without_stop_words
-
-    return sentenceValueTable
-
-
-def _find_average_score(sentenceValueTable):
-    """
-    Find the average score from the sentence value dictionary
-    :rtype: int
-    """
-
-    sum = 0
-    for key in sentenceValueTable:
-        sum += sentenceValueTable[key]
-
-    average = sum / len(sentenceValueTable)
-
-    return average
-
-
-def _generate_summary(sentences, sentenceValueTable, threshold):
-    sentence_count = 0
-    summary = ''
-
-    for sentence in sentences:
-        if sentence[:10] in sentenceValueTable and sentenceValueTable[sentence[:10]] >= threshold:
-            summary += "\n" + sentence
-            sentence_count += 1
-            
-    return summary
-
-
-def run_summarization(text):
-    # 1. create frequency table of words
-    wordFrequencyTable = _create_word_frequency_table(text)
-
-    # 2. tokenize the sentences
-    sentences = sent_tokenize(text)
-
-    # 3. Score the sentences
-    sent_scores = _score_sentences(sentences, wordFrequencyTable)
-
-    # 4. Find the threshold
-    threshold = _find_average_score(sent_scores)
-
-    #5. Generate the summary
-    summary = _generate_summary(sentences, sent_scores, 1.3 * threshold)
-
-    return summary
-
-if __name__ == '__main__':
-    result = run_summarization(text_str)
-    print(result)
-
+    for sentence in summarizer(parser.document, SENTENCES_COUNT):
+        print(sentence)
