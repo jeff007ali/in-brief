@@ -1,3 +1,7 @@
+import requests
+import re
+from bs4 import BeautifulSoup
+
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize, sent_tokenize
@@ -16,6 +20,24 @@ If you have not achieved the success you deserve and are considering giving up, 
 Vision + desire + dedication + patience + daily action leads to astonishing success. Are you willing to commit to this way of life or jump ship at the first sign of failure? I’m amused when I read questions written by millennials on Quora who ask how they can become rich and famous or the next Elon Musk. Success is a fickle and long game with highs and lows. Similarly, there are no assurances even if you’re an overnight sensation, to sustain it for long, particularly if you don’t have the mental and emotional means to endure it. This means you must rely on the one true constant in your favour: your personal development. The more you grow, the more you gain in terms of financial resources, status, success — simple. If you leave it to outside conditions to dictate your circumstances, you are rolling the dice on your future.
 So become intentional on what you want out of life. Commit to it. Nurture your dreams. Focus on your development and if you want to give up, know what’s involved before you take the plunge. Because I assure you, someone out there right now is working harder than you, reading more books, sleeping less and sacrificing all they have to realise their dreams and it may contest with yours. Don’t leave your dreams to chance.
 '''
+
+def _parse_webpage_to_text(url):
+    # TODO : Make this HTML parsing efficient
+    response = requests.get(url)
+    html_code = response.content
+    soup = BeautifulSoup(html_code, 'html.parser')
+    paragraphs = soup.find_all('p')
+
+    article_text = ""
+
+    for p in paragraphs:
+        article_text += p.text
+
+    article_text = re.sub(r'\[[0-9]*\]', ' ', article_text)
+    article_text = re.sub(r'\s+', ' ', article_text)
+
+    return article_text
+
 
 def _create_word_frequency_table(text_string):
     """
@@ -102,7 +124,10 @@ def _generate_summary(sentences, sentenceValueTable, threshold):
     return summary
 
 
-def run_summarization(text):
+def run_summarization(url):
+    # 0. Parse HTML page
+    text = _parse_webpage_to_text(url)
+
     # 1. create frequency table of words
     wordFrequencyTable = _create_word_frequency_table(text)
 
@@ -121,6 +146,6 @@ def run_summarization(text):
     return summary
 
 if __name__ == '__main__':
-    result = run_summarization(text_str)
+    result = run_summarization('https://becominghuman.ai/text-summarization-in-5-steps-using-nltk-65b21e352b65')
     print(result)
 
